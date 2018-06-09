@@ -5,6 +5,10 @@ import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backend_bases import key_press_handler
+import matplotlib.animation as animation
+from matplotlib import style
+style.use("ggplot")
 
 gyroData = []
 accelData = []
@@ -13,6 +17,7 @@ altitudeData = []
 orientationData = []
 gpsData = []
 root = Tk()
+running = True
 
 class SyntaxParser():
     prevTime = 0
@@ -71,6 +76,7 @@ class AltitudeMonitor():
 
     def kill(self):
         self.ser.close()
+        running = False
 
 class GraphGUI():
     def __init__(self, master):
@@ -90,14 +96,13 @@ class GraphGUI():
 
     def createGraph(self):
         self.frame = Frame(self.master)
-        self.f = Figure( figsize=(10, 9), dpi=80 )
+        self.frame.grid(column=0,row=1,columnspan=4, rowspan=3, sticky=N+W+E+S)
+        self.f = Figure( figsize=(8, 7), dpi=80 )
         self.ax0 = self.f.add_axes( (0.05, .05, .90, .90), frameon=False)
         self.ax0.set_xlabel( 'Time (ms)' )
-        self.ax0.set_ylabel( 'Altitude (M)' )
+        self.ax0.set_ylabel( 'Thrust (N)' )
         self.ax0.grid(color='r',linestyle='-', linewidth=2)
         #self.ax0.plot(np.max(np.random.rand(100,10)*10,axis=1),"r-")
-        self.frame = Frame(self.master)
-        self.frame.grid(column=0,row=1,columnspan=4, rowspan=3, sticky=N+W+E+S)
         self.canvas = FigureCanvasTkAgg(self.f, master=self.frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
@@ -133,6 +138,8 @@ def runArduino():
 def main():
     graph = GraphGUI(root)
     root.mainloop()
+    while running:
+        graph.plotGraph()
 
 _thread.start_new_thread(runArduino, ())
 main()
