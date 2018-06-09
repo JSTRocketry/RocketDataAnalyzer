@@ -16,6 +16,7 @@ pressureData = []
 altitudeData = []
 orientationData = []
 gpsData = []
+plotData = []
 root = Tk()
 running = True
 
@@ -114,9 +115,9 @@ class GraphGUI():
     def plotGraph(self):
         xData = []
         yData = []
-        for i in altitudeData:
-            xData.append(i[1])
-            yData.append(i[0])
+        for i in range(0, len(plotData)):
+            xData.append(plotData[i][1])
+            yData.append(plotData[i][0])
         self.ax0.plot(xData,yData)
         self.canvas.draw()
 
@@ -129,7 +130,6 @@ def runArduino():
         if parser.START_LINE in f and parser.END_LINE in f:
             sampleData = parser.parseLine(f)
             if(sampleData != None):
-                print(sampleData)
                 altitudeData.append(sampleData)
             f = altMonitor.readData()
         else:
@@ -139,6 +139,7 @@ def main():
     graph = GraphGUI(root)
     root.mainloop()
     while running:
+        plotData = altitudeData
         graph.plotGraph()
 
 _thread.start_new_thread(runArduino, ())
