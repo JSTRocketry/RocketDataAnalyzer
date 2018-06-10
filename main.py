@@ -16,9 +16,7 @@ pressureData = []
 altitudeData = []
 orientationData = []
 gpsData = []
-plotData = []
 root = Tk()
-running = True
 
 class SyntaxParser():
     prevTime = 0
@@ -33,23 +31,25 @@ class SyntaxParser():
     ALTITUDE_SYNTAX = ["PA:", "TS:"]
 
     def parseLine(self, line):
+        print(line)
         toAppend = 0.0
-        shouldReturn = True
         syntax = self.getSyntax(line)
         data = []
         startIndex = line.index(self.START_LINE)
         endIndex = line.index(self.END_LINE)
-        for i in range(0, len(syntax)):
-            if(i < len(syntax)-1):
-                toAppend = float(line[line.index(syntax[i])+3:line.index(syntax[i+1])-1])
-            else:
-                toAppend = float(line[line.index(syntax[i])+3:endIndex])
-                if toAppend <= self.prevTime and syntax == self.prevSyntax:
-                    return None
-                self.prevTime = toAppend
-            data.append(toAppend)
-            self.prevSyntax = syntax
-        return data
+        if self.goodLine(line):
+            for i in range(0, len(syntax)):
+                if(i < len(syntax)-1):
+                    toAppend = float(line[line.index(syntax[i])+3:line.index(syntax[i+1])-1])
+                else:
+                    toAppend = float(line[line.index(syntax[i])+3:endIndex])
+                    if toAppend <= self.prevTime and syntax == self.prevSyntax:
+                        return None
+                    self.prevTime = toAppend
+                data.append(toAppend)
+                self.prevSyntax = syntax
+            return data
+        else: return None
 
     def getSyntax(self, line):
         startIndex = line.index(self.START_LINE)
@@ -65,6 +65,23 @@ class SyntaxParser():
         elif(testSyntax == self.ALTITUDE_SYNTAX[0]):
             return self.ALTITUDE_SYNTAX
 
+    def goodLine(self, line):
+        startIndex = line.index(self.START_LINE)
+        endIndex = line.index(self.END_LINE)
+        syntax = self.getSyntax(line)
+        timingCount = self.getTimingCount(line)
+        if startIndex is not None and endIndex is not None and syntax is not None:
+            if timingCount is len(syntax)-1:
+                return True
+        return False
+
+    def getTimingCount(self, line):
+        count = 0;
+        for i in line:
+            if i is self.TIMING:
+                count += 1
+        return count
+
 class AltitudeMonitor():
     def __init__(self, port):
         self.ser = serial.Serial(port, 115200)
@@ -77,7 +94,6 @@ class AltitudeMonitor():
 
     def kill(self):
         self.ser.close()
-        running = False
 
 class GraphGUI():
     def __init__(self, master):
@@ -115,10 +131,11 @@ class GraphGUI():
     def plotGraph(self):
         xData = []
         yData = []
-        for i in range(0, len(plotData)):
-            xData.append(plotData[i][1])
-            yData.append(plotData[i][0])
+        for i in altitudeData:
+            xData.append(i[1])
+            yData.append(i[0])
         self.ax0.plot(xData,yData)
+        self.ax0.get_lines()[0].set_color("blue")
         self.canvas.draw()
 
 def runArduino():
@@ -131,16 +148,14 @@ def runArduino():
             sampleData = parser.parseLine(f)
             if(sampleData != None):
                 altitudeData.append(sampleData)
+                graph.plotGraph()
             f = altMonitor.readData()
         else:
             altMonitor.kill()
 
 def main():
-    graph = GraphGUI(root)
+    _thread.start_new_thread(runArduino, ())
     root.mainloop()
-    while running:
-        plotData = altitudeData
-        graph.plotGraph()
 
-_thread.start_new_thread(runArduino, ())
+graph = GraphGUI(root)
 main()
